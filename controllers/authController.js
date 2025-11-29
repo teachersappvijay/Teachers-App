@@ -94,8 +94,6 @@ exports.forgotPassword = async function (req, res, next) {
       message: 'Password reset link sent to your email',
     });
   } catch (error) {
-    // console.error(error);
-
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });

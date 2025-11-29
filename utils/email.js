@@ -45,11 +45,9 @@ module.exports = class Email {
     };
 
     try {
-      // 4. Send using Brevo API
       await this.emailApi.sendTransacEmail(emailPayload);
-      console.log(`Email sent to ${this.to}`);
     } catch (error) {
-      console.log('Email sending failed:', error);
+      console.error('Email sending failed:', error);
     }
   }
 
