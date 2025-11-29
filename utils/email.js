@@ -1,7 +1,6 @@
 const pug = require('pug');
-
 const { htmlToText } = require('html-to-text');
-const nodemailer = require('nodemailer');
+const Brevo = require('@getbrevo/brevo');
 
 module.exports = class Email {
   constructor(user, url, booking) {
@@ -16,19 +15,12 @@ module.exports = class Email {
       : null;
     this.adult = booking ? booking.adult : null;
     this.children = booking ? booking.children : null;
-  }
 
-  newTransport() {
-    return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+    this.emailApi = new Brevo.TransactionalEmailsApi();
+    this.emailApi.setApiKey(
+      Brevo.TransactionalEmailsApiApiKeys.apiKey,
+      process.env.BREVO_API_KEY,
+    );
   }
 
   async send(template, subject) {
@@ -42,18 +34,22 @@ module.exports = class Email {
       children: this.children,
     });
 
-    const mailOptions = {
-      from: this.from,
-      to: this.to,
-      subject,
-      html,
-      text: htmlToText(html),
+    const textContent = htmlToText(html);
+
+    const emailPayload = {
+      sender: { name: process.env.EMAIL_SENDER_NAME, email: this.from },
+      to: [{ email: this.to }],
+      subject: subject,
+      htmlContent: html,
+      textContent: textContent,
     };
 
     try {
-      await this.newTransport().sendMail(mailOptions);
+      // 4. Send using Brevo API
+      await this.emailApi.sendTransacEmail(emailPayload);
+      console.log(`Email sent to ${this.to}`);
     } catch (error) {
-      console.log(error);
+      console.log('Email sending failed:', error);
     }
   }
 
@@ -64,11 +60,14 @@ module.exports = class Email {
   async sendPasswordReset() {
     await this.send(
       'passwordReset',
-      'Your password reset link. (valid only for 10 minutes)',
+      'Your password reset link (valid only for 10 minutes)',
     );
   }
 
   async sendBookingConfirm() {
-    await this.send('bookingConfirm', `Booking Confirmation -${this.tourName}`);
+    await this.send(
+      'bookingConfirm',
+      `Booking Confirmation - ${this.tourName}`,
+    );
   }
 };
